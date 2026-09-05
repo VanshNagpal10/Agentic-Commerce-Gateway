@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── MERCHANT ────────────────────────────────────────────────
+
+model Merchant {
+  id        String   @id @default(cuid())
+  name      String
+  currency  String   @default("INR")
+  storeUrl  String?
+  aiEnabled Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  products Product[]
+  policies Policy[]
+  orders   Order[]
+}
+
+// ─── PRODUCT ─────────────────────────────────────────────────
+
+model Product {
+  id           String   @id @default(cuid())
+  merchantId   String
+  merchant     Merchant @relation(fields: [merchantId], references: [id])
+  sku          String
+  title        String
+  description  String
+  category     String
+  attributes   Json     @default("{}")
+  price        Int // In paise (₹1 = 100 paise)
+  stock        Int
+  deliveryDays Int      @default(5)
+  returnPolicy String   @default("7-day return")
+  createdAt    DateTime @default(now())
+
+  @@index([merchantId, category])
+  @@index([merchantId])
+}
+
+// ─── POLICY ──────────────────────────────────────────────────
+
+model Policy {
+  id                   String   @id @default(cuid())
+  merchantId           String   @unique
+  merchant             Merchant @relation(fields: [merchantId], references: [id])
+  maxAutoSpend         Int      @default(500000) // ₹5,000 in paise
+  approvalThreshold    Int      @default(500000) // Same as maxAutoSpend by default
+  maxDiscountPct       Int      @default(15)
+  restrictedCategories Json     @default("[]") // ["gift_cards", "high_value_electronics"]
+  minStock             Int      @default(2)
+  maxRetries           Int      @default(1)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// ─── ORDER ───────────────────────────────────────────────────
+
+model Order {
+  id             String      @id @default(cuid())
+  merchantId     String
+  merchant       Merchant    @relation(fields: [merchantId], references: [id])
+  status         OrderStatus @default(QUOTED)
+  items          Json // [{ productId, title, quantity, unitPrice }]
+  subtotal       Int
+  discount       Int         @default(0)
+  total          Int
+  idempotencyKey String      @unique
+  traceId        String
+  buyerIntent    String? // Original natural language request
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  payments Payment[]
+
+  @@index([merchantId])
+  @@index([traceId])
+  @@index([status])
+}
+
+enum OrderStatus {
+  QUOTED
+  POLICY_APPROVED
+  PENDING_APPROVAL
+  POLICY_DENIED
+  PAYMENT_PENDING
+  PAYMENT_FAILED
+  PAYMENT_UNKNOWN
+  PAYMENT_SUCCESS
+  CONFIRMED
+  CANCELLED
+}
+
+// ─── PAYMENT ─────────────────────────────────────────────────
+
+model Payment {
+  id                   String        @id @default(cuid())
+  orderId              String
+  order                Order         @relation(fields: [orderId], references: [id])
+  razorpayOrderId      String?
+  razorpayPaymentId    String?
+  razorpayPaymentLinkId String? // Set when payment is collected via a hosted Razorpay Payment Link (agent/MCP flow)
+  status               PaymentStatus @default(PENDING)
+  amount               Int
+  failureCode          String?
+  attempts             Int           @default(0)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([orderId])
+}
+
+enum PaymentStatus {
+  PENDING
+  INITIATED
+  SUCCESS
+  FAILED
+  UNKNOWN
+  VERIFIED
+}
+
+// ─── CHAT SESSION ────────────────────────────────────────────
+
+model ChatSession {
+  id           String   @id @default(cuid())
+  merchantId   String
+  traceId      String   @unique
+  title        String   @default("New chat")
+  sessionState Json? // Server-tracked ids (quote/order/razorpay) so the buyer can resume after a reload
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  messages ChatMessage[]
+
+  @@index([merchantId])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String // "user" | "assistant"
+  content   String
+  toolCalls Json? // array of { toolName, args, result, latencyMs }
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId])
+}
+
+// ─── AUDIT EVENT ─────────────────────────────────────────────
+
+model AuditEvent {
+  id             String   @id @default(cuid())
+  traceId        String
+  eventType      String // TOOL_CALL, POLICY_DECISION, STATE_CHANGE, PAYMENT_EVENT, ERROR
+  actor          String   @default("agent") // "agent", "merchant", "system"
+  toolName       String?
+  input          Json?
+  output         Json?
+  policyDecision String? // ALLOW, DENY, APPROVAL_REQUIRED
+  policyReason   String?
+  latencyMs      Int?
+  createdAt      DateTime @default(now())
+
+  @@index([traceId])
+  @@index([eventType])
+}
