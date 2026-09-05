@@ -24,9 +24,12 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
       {/* Top Navigation */}
       <header className="h-14 bg-[#0D121B] text-white flex items-center justify-between px-4 z-50">
         <div className="flex items-center space-x-3">
-          <div className="text-xl font-bold italic tracking-tighter flex items-center">
-            <span className="text-blue-500 mr-1 text-2xl">⚡</span> Razorpay
+          <div className="text-xl font-bold tracking-tight flex items-center">
+            <span className="text-blue-500 mr-2 text-2xl">⚡</span> Agentic Commerce
           </div>
+          <span className="text-[11px] font-medium text-gray-400 uppercase tracking-widest border-l border-[#2B3545] pl-3 flex items-center">
+            Powered by <span className="italic font-bold ml-1 text-gray-300">Razorpay</span>
+          </span>
           <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-l border-[#2B3545] pl-3">
             Merchant Console
           </span>
