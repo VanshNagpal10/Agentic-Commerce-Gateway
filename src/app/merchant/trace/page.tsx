@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useMerchant } from '@/lib/merchant-context';
 import { ChevronDown, ChevronRight, Activity, Terminal, ShieldAlert, CheckCircle2, AlertCircle, RefreshCcw, Clock } from 'lucide-react';
@@ -26,7 +26,7 @@ type TraceGroup = {
   events: TraceEvent[];
 };
 
-export default function TracePage() {
+function TraceContent() {
   const { merchantId } = useMerchant();
   const searchParams = useSearchParams();
   const traceIdParam = searchParams.get('traceId');
@@ -248,5 +248,13 @@ export default function TracePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TracePage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse h-20 bg-gray-100 rounded-lg"></div>}>
+      <TraceContent />
+    </Suspense>
   );
 }

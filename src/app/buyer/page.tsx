@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { useMerchant } from '@/lib/merchant-context';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   openRazorpayCheckout,
   loadRazorpayScript,
@@ -422,7 +424,15 @@ export default function BuyerChatPage() {
                       : 'bg-white border border-gray-200/80 rounded-2xl rounded-bl-sm px-4 py-3 shadow-xs'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                  {msg.role === 'user' ? (
+                    <div className="whitespace-pre-wrap text-[15px]">{msg.content}</div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none prose-slate prose-p:leading-relaxed prose-pre:bg-slate-50 prose-pre:text-slate-900 prose-th:border-b prose-th:border-slate-200 prose-th:bg-slate-50 prose-th:px-3 prose-th:py-2 prose-td:px-3 prose-td:py-2 prose-td:border-b prose-td:border-slate-100 prose-table:border prose-table:border-slate-200 prose-table:rounded-lg text-[15px] text-slate-800">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content.replace(/\+\+(.*?)\+\+/g, '**$1**')}
+                      </ReactMarkdown>
+                    </div>
+                  )}
 
                   {msg.toolCalls && msg.toolCalls.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-gray-100">
