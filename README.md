@@ -6,7 +6,7 @@ A merchant-side control plane that lets an AI agent transact **safely** — expo
 
 ## The thesis
 
-AI agents are about to do the buying. The hard part isn't getting an LLM to call a "buy" API — it's making that safe when the model is non-deterministic, retries on timeouts, and can be talked into things. ACG's answer: **the LLM decides intent, but a deterministic gateway decides money.** Every state change goes through a single state machine, every purchase through a deterministic policy engine, Razorpay order IDs are reused rather than recreated so a confused agent can't charge twice — and the whole surface is published as an MCP server so *any* agent inherits those guarantees.
+AI agents are about to do the buying. The hard part isn't getting an LLM to call a "buy" API, it's making that safe when the model is non-deterministic, retries on timeouts, and can be talked into things. ACG's answer: **the LLM decides intent, but a deterministic gateway decides money.** Every state change goes through a single state machine, every purchase through a deterministic policy engine, Razorpay order IDs are reused rather than recreated so a confused agent can't charge twice — and the whole surface is published as an MCP server so *any* agent inherits those guarantees.
 
 **Payment is human-authenticated by design.** An LLM cannot complete Razorpay's OTP / UPI-PIN / 3DS step, and faking a capture would be theater. So the agent's job ends at producing a **Razorpay payment link**; a human authenticates on Razorpay's hosted page, and a webhook (or polling reconciliation) confirms the order. That boundary — *the agent can create and govern an order but never autonomously move money* — is the honest, defensible core of the design.
 
@@ -139,16 +139,6 @@ The merchant is the user of this product; AI buyers are their new channel. So `/
 **Why a merchant onboards (the Track 1 revenue argument):** buyers are starting purchases inside an AI assistant, and a store no agent can read is invisible there. ACG makes the catalog quotable and buyable by any MCP agent in minutes with no integration work — additive revenue on top of the existing site — and it is *approvable*, because every purchase clears the merchant's own policy engine and payment stays human-authenticated. The dashboard then attributes what that channel earned.
 
 Multi-merchant by design: every table, tool, and query is `merchantId`-scoped; the seeded SportGear/TechMart stores and anything created from the homepage share the same gateway.
-
-## Judge flows (all organic — the real policy engine decides)
-
-There is no demo toggle; every outcome is produced by the actual policy engine and state machine.
-
-1. **Happy path** — "Buy me a pair of running shoes under ₹5,000." The agent quotes → `create_order` → policy `ALLOW` → Checkout.js → `CONFIRMED`.
-2. **Policy deny** — "Buy a ₹2,000 gift card." Gift cards are a restricted category, so `create_order` returns `DENY`, the order goes `POLICY_DENIED`, and **zero** payments are created.
-3. **Approval required** — buy an item above the auto-spend band. `create_order` routes it to `PENDING_APPROVAL`; it appears in **Merchant → Approvals**. Approve it, return to the chat (even after a reload — session state is persisted), and pay. This is the bug-fix highlight: approval-band orders now correctly queue.
-4. **Payment timeout** — start a payment and close the Razorpay popup. The client reconciles real status (`get_payment_status`) instead of assuming failure — no double charge.
-5. **Agent end-to-end (Claude)** — the MCP flow above: Claude creates a governed order and returns a payment link a human pays.
 
 Every run is inspectable at **Merchant → Execution Trace** by `traceId`.
 
