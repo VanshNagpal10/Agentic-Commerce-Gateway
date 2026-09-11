@@ -4,6 +4,8 @@
 
 A merchant-side control plane that lets an AI agent transact **safely** — exposed as a real **MCP server**. ACG sits between the AI agent and the merchant's money/inventory logic and enforces the guarantees a merchant actually cares about: no double-charges, no runaway spend, no purchases from restricted categories, and a full audit trail for every decision. Both a first-party website **and** an external agent like **Claude** connect to the *same* governed gateway.
 
+**Live demo:** [agentic-commerce-gateway-kappa.vercel.app](https://agentic-commerce-gateway-kappa.vercel.app)
+
 ## The thesis
 
 AI agents are about to do the buying. The hard part isn't getting an LLM to call a "buy" API, it's making that safe when the model is non-deterministic, retries on timeouts, and can be talked into things. ACG's answer: **the LLM decides intent, but a deterministic gateway decides money.** Every state change goes through a single state machine, every purchase through a deterministic policy engine, Razorpay order IDs are reused rather than recreated so a confused agent can't charge twice — and the whole surface is published as an MCP server so *any* agent inherits those guarantees.
